@@ -17,15 +17,22 @@
     body { margin: 0; font-family: monospace; background: var(--bg); color: var(--text); padding: 20px; }
     h1, h2 { text-align: center; margin: 0 0 10px 0; }
 
-    /* Desktop layout */
+    /* Desktop grid */
     .layout { display: grid; grid-template-columns: 420px 1fr; gap: 16px; align-items: start; }
 
-    /* Mobile-first tweaks */
+    /* Mobile-first tweaks + overlap fix */
     @media (max-width: 1024px) {
       body { padding: 12px; }
-      .layout { grid-template-columns: 1fr; }
-      .ide { position: static; }
+      .layout { display: flex; flex-direction: column; } /* stack */
+      .ide, .viz { position: static !important; width: 100%; } /* kill sticky */
+      .ide { margin-bottom: 16px; }
       .controls { justify-content: flex-start; }
+    }
+    /* iOS nudge */
+    @supports (-webkit-touch-callout: none) {
+      @media (max-width: 1024px) {
+        .ide { position: static !important; }
+      }
     }
 
     .ide {
@@ -33,9 +40,12 @@
       border: 1px solid var(--border);
       border-radius: 6px;
       padding: 12px;
-      position: sticky;
+      position: sticky; /* desktop only (disabled on mobile) */
       top: 12px;
+      z-index: 1;
     }
+    .viz { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 12px; position: relative; z-index: 0; }
+
     textarea {
       width: 100%; height: 260px; background: var(--panel-2); color: var(--text);
       border: 1px solid var(--border); border-radius: 4px; padding: 10px; resize: vertical;
@@ -58,7 +68,6 @@
     pre#output { background: #161616; border: 1px solid var(--border); border-radius: 4px; padding: 10px; min-height: 120px; white-space: pre-wrap; overflow: auto; font-size: 12px; }
     @media (max-width: 600px) { pre#output { font-size: 11px; } }
 
-    .viz { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 12px; }
     .controls {
       display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: center; margin: 8px 0 12px;
       overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: thin;
@@ -220,7 +229,6 @@ posit varnothing nabla infty ds2(): {
         out.textContent = 'Error: Network issue or server error\n';
       }
     }
-
     async function runCode() {
       const out = document.getElementById('output');
       out.textContent = 'Executing...\n';
@@ -237,7 +245,6 @@ posit varnothing nabla infty ds2(): {
         out.textContent = 'Error: Failed to start execution\n';
       }
     }
-
     async function stopCode() {
       const out = document.getElementById('output');
       try {
@@ -249,7 +256,6 @@ posit varnothing nabla infty ds2(): {
         out.textContent += '\nError: Failed to stop execution';
       }
     }
-
     function startOutputLoop() {
       if (outputInterval) clearInterval(outputInterval);
       outputInterval = setInterval(async () => {
@@ -277,7 +283,6 @@ posit varnothing nabla infty ds2(): {
         }
       }, 500);
     }
-
     document.getElementById('compileBtn').addEventListener('click', compileCode);
     document.getElementById('runBtn').addEventListener('click', runCode);
     document.getElementById('stopBtn').addEventListener('click', stopCode);
@@ -321,7 +326,6 @@ posit varnothing nabla infty ds2(): {
       const title = document.createElement('h4');
       title.textContent = label;
       const canvas = document.createElement('canvas');
-      // CSS controls display size; JS will set pixel size
       const ctx = canvas.getContext('2d');
       wrapper.appendChild(title);
       wrapper.appendChild(canvas);
@@ -358,38 +362,27 @@ posit varnothing nabla infty ds2(): {
     function scheduleResize() { if (__rAF) cancelAnimationFrame(__rAF); __rAF = requestAnimationFrame(resizeAllCanvases); }
     window.addEventListener('resize', scheduleResize);
     window.addEventListener('orientationchange', scheduleResize);
+    window.addEventListener('load', scheduleResize); /* ensure correct after mobile flow */
     // initial sizing
     resizeAllCanvases();
 
     /**************
      * Drawing utilities
      **************/
+    // Apple-Alien neon hues (HSL hues)
+    const APPLE_ALIEN_HUES = [170, 300, 105, 330, 160, 270, 200, 30, 80, 320];
+
     function generateRings(n) {
       const maxRadius = 100;
-      const appleAlienPalette = [
-        '#00fff0', // neon aqua
-        '#ff00ff', // magenta
-        '#39ff14', // neon green
-        '#ff005d', // hot pink
-        '#00ff95', // mint neon
-        '#8c00ff', // violet
-        '#00b3ff', // bright cyan
-        '#ff7b00', // alien orange
-        '#aaff00', // lime
-        '#ff00aa'  // pink magenta
-      ];
-      return Array.from({ length: n }, (_, i) => {
-        const baseColor = appleAlienPalette[i % appleAlienPalette.length];
-        return {
-          baseRadius: ((i + 1) / n) * maxRadius,
-          currentRadius: ((i + 1) / n) * maxRadius,
-          angle: 0,
-          speed: (i % 2 === 0 ? 1 : -1) * (0.01 + i * 0.002),
-          baseSpeed: (i % 2 === 0 ? 1 : -1) * (0.01 + i * 0.002),
-          color: baseColor,
-          brightness: 65 + (i % 2) * 15 // slightly varied brightness
-        };
-      });
+      return Array.from({ length: n }, (_, i) => ({
+        baseRadius: ((i + 1) / n) * maxRadius,
+        currentRadius: ((i + 1) / n) * maxRadius,
+        angle: 0,
+        speed: (i % 2 === 0 ? 1 : -1) * (0.01 + i * 0.002),
+        baseSpeed: (i % 2 === 0 ? 1 : -1) * (0.01 + i * 0.002),
+        hue: APPLE_ALIEN_HUES[i % APPLE_ALIEN_HUES.length], // base hue
+        brightness: 60 + (i % 2) * 12
+      }));
     }
     function drawCore(ctx, x, y) { ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.fillStyle = 'white'; ctx.fill(); }
     function drawRadials(ctx, cx, cy, count = 12, thickness = 2, radius = 110) {
@@ -418,12 +411,14 @@ posit varnothing nabla infty ds2(): {
     function drawRing(ctx, ring, frame, amp, freq, isWarped, isChronoCopy, chronoT, opts = {}) {
       const { bifurcate=false, jitter=0, solBreath=0, segments=150 } = opts;
       ctx.save();
-      // coordinate system: scale to BASE_SIZE using transform set in animate()
       ctx.translate(125, 125);
       ctx.rotate(ring.angle);
+
+      // neon shimmer: hue shifts subtly over time
+      const hueShift = 8 * Math.sin(frame / 60 + ring.baseRadius / 50);
+      const hue = (ring.hue + hueShift + 360) % 360;
       const breath = solBreath ? (1 + 0.25 * Math.sin(frame / 20)) : 1;
-      const baseHue = parseInt(ring.color.match(/\d+/)[0]) || 180;
-      ctx.strokeStyle = `hsl(${baseHue}, 100%, ${Math.min(90, ring.brightness * breath)}%)`;
+      ctx.strokeStyle = `hsl(${hue}, 100%, ${Math.min(90, ring.brightness * breath)}%)`;
       ctx.lineWidth = 1.5 + 1 * Math.sin(frame / 30 + ring.currentRadius / 50);
 
       function tracePath(phaseOffset = 0, radialOffset = 0) {
@@ -553,8 +548,7 @@ posit varnothing nabla infty ds2(): {
         drawCore(ctx, 125, 125);
 
         if (renderer.flash && renderer.flash > 0) {
-          // Flash frame drawn in the scaled space: convert W,H from base world
-          drawFlashFrame(ctx, BASE_SIZE, BASE_SIZE, renderer.flash);
+          drawFlashFrame(ctx, 250, 250, renderer.flash); /* scaled frame */
           renderer.flash = Math.max(0, renderer.flash - 0.03);
         }
       });
@@ -564,12 +558,13 @@ posit varnothing nabla infty ds2(): {
     }
 
     // Global buttons
-    toggleBtn.addEventListener('click', () => {
+    document.getElementById('modeToggle').addEventListener('click', () => {
       const anyOff = renderers.some(r => !r.warp);
       renderers.forEach(r => r.warp = anyOff);
-      toggleBtn.textContent = anyOff ? 'Set All Static 🔁' : 'Toggle All Warp 🌌';
+      const t = document.getElementById('modeToggle');
+      t.textContent = anyOff ? 'Set All Static 🔁' : 'Toggle All Warp 🌌';
     });
-    chronoBtn.addEventListener('click', () => {
+    document.getElementById('chronoReindex').addEventListener('click', () => {
       chronoTarget = parseInt(distanceSlider.value);
       chronoSteps = Math.max(30, chronoTarget);
       chronoTransition = true;
@@ -580,6 +575,11 @@ posit varnothing nabla infty ds2(): {
       applyEffectsToRenderers(constructs);
       const m = codeEl.value.match(/octyl\s+time\s*:=\s*(\d+)/);
       if (m) frameSpeed = Math.max(1, Math.min(8, parseInt(m[1], 10)));
+    });
+
+    // Ensure correct sizing after the mobile layout applies
+    window.addEventListener('load', () => {
+      if (typeof resizeAllCanvases === 'function') resizeAllCanvases();
     });
 
     animate();
