@@ -1,442 +1,520 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>SimuLang Web IDE</title>
-    <style>
-        body {
-            font-family: monospace;
-            background: #1e1e1e;
-            color: #dcdcdc;
-            padding: 20px;
-        }
-        .codebox {
-            width: 100%;
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        .tabs {
-            display: flex;
-            border-bottom: 2px solid #444;
-            margin-bottom: 10px;
-        }
-        .tab {
-            padding: 10px 20px;
-            cursor: pointer;
-            background: #2d2d2d;
-            color: #dcdcdc;
-            margin-right: 5px;
-            border-radius: 5px 5px 0 0;
-            user-select: none;
-        }
-        .tab.active {
-            background: #007acc;
-            color: white;
-        }
-        .tab-content {
-            display: none;
-        }
-        .tab-content.active {
-            display: block;
-        }
-        textarea {
-            width: 100%;
-            height: 300px;
-            background: #252526;
-            color: #dcdcdc;
-            font-family: monospace;
-            border: 1px solid #333;
-            padding: 10px;
-            resize: vertical;
-        }
-        .highlightPreview {
-            background: #1e1e1e;
-            border: 1px solid #444;
-            padding: 10px;
-            margin-top: 10px;
-            white-space: pre-wrap;
-        }
-        .token { display: inline; }
-        .token.keyword { color: #c586c0; }
-        .token.identifier { color: #9cdcfe; }
-        .token.number { color: #b5cea8; }
-        .token.string { color: #ce9178; }
-        .token.symbol { color: #d4d4d4; }
-        .token.sol { color: #ff6f00; font-weight: bold; }
-        .token.phase { color: #ff6f00; }
-        .token.attribute { color: #d7ba7d; }
-        button {
-            margin-top: 10px;
-            padding: 10px 20px;
-            background: #007acc;
-            color: white;
-            border: none;
-            cursor: pointer;
-            margin-right: 10px;
-        }
-        pre {
-            background: #2d2d2d;
-            padding: 10px;
-            border: 1px solid #444;
-            margin-top: 20px;
-            white-space: pre-wrap;
-        }
-        #simulang-footer {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            background: rgba(30, 30, 30, 0.8);
-            color: #bbbbbb;
-            font-family: 'Ubuntu', sans-serif;
-            font-style: italic;
-            font-size: 14px;
-            text-align: center;
-            padding: 10px 0;
-            z-index: 1000;
-            box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.6);
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <title>SimuLang</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root {
+      --bg: #1e1e1e;
+      --panel: #2d2d2d;
+      --panel-2: #252526;
+      --text: #dcdcdc;
+      --accent: #00ffee;
+      --accent-2: #007acc;
+      --border: #444;
+    }
+    body { margin: 0; font-family: monospace; background: var(--bg); color: var(--text); padding: 20px; }
+    h1, h2 { text-align: center; margin: 0 0 10px 0; }
+    .layout { display: grid; grid-template-columns: 420px 1fr; gap: 16px; align-items: start; }
+    @media (max-width: 1024px) { .layout { grid-template-columns: 1fr; } }
+    .ide { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 12px; position: sticky; top: 12px; }
+    textarea {
+      width: 100%; height: 260px; background: var(--panel-2); color: var(--text);
+      border: 1px solid var(--border); border-radius: 4px; padding: 10px; resize: vertical;
+      font-family: monospace; font-size: 13px;
+    }
+    .highlightPreview { background: #1b1b1b; border: 1px solid var(--border); border-radius: 4px; padding: 10px; white-space: pre-wrap; min-height: 120px; margin-top: 10px; }
+    .token { display: inline; }
+    .token.keyword { color: #c586c0; } .token.identifier { color: #9cdcfe; }
+    .token.number { color: #b5cea8; } .token.string { color: #ce9178; }
+    .token.symbol { color: #d4d4d4; } .token.sol { color: #ffb300; font-weight: bold; }
+    .token.phase { color: #ffa000; } .token.attribute { color: #d7ba7d; }
+    .canvas-linked { background: #003344; border-radius: 3px; padding: 1px 3px; font-weight: bold; }
+    .btns { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+    button { background: var(--accent-2); color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: 700; }
+    button.secondary { background: var(--accent); color: #000; }
+    pre#output { background: #161616; border: 1px solid var(--border); border-radius: 4px; padding: 10px; min-height: 120px; white-space: pre-wrap; overflow: auto; font-size: 12px; }
+
+    .viz { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 12px; }
+    .controls { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; justify-content: center; margin: 8px 0 12px; }
+    .controls label { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+    .canvas-wrapper { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+    .canvas-block {
+      display: flex; flex-direction: column; align-items: center; background: #111; padding: 8px;
+      border-radius: 6px; border: 1px solid #0a3a36; user-select: none;
+    }
+    .canvas-block h4 { margin: 4px 0 6px 0; color: var(--accent); font-weight: 600; font-size: 13px; }
+    canvas { background: black; border: 1px solid var(--accent); width: 250px; height: 250px; touch-action: manipulation; }
+
+    #simulang-footer { margin-top: 16px; color: #bbbbbb; font-style: italic; font-size: 12px; text-align: center; opacity: 0.85; }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .logo {
+      height: 100px; /* adjust as needed */
+      width: auto;
+      border-radius: 8px;
+    }
+  </style>
 </head>
 <body>
-    <h1>SimuLang Web IDE</h1>
-    <div class="codebox">
-        <div class="tabs">
-            <div class="tab active" data-tab="example1">Example 1: Infinity Loop</div>
-            <div class="tab" data-tab="example2">Example 2: Basic Constructs</div>
-            <div class="tab" data-tab="example3">Example 3: Martian Sol</div>
-            <div class="tab" data-tab="example4">Example 4: Universal Limit</div>
-            <div class="tab" data-tab="example5">Example 5: Many Worlds</div>
-            <div class="tab" data-tab="example6">Example 6: Cyborg</div>
-        </div>
-
-        <div class="tab-content active" id="example1">
-            <textarea id="code-example1">coeternal light := ∞;
+  <div class="header">
+      <img src="static/images/logo.png" alt="SimuLang Logo" class="logo">
+      <h1>SimuLang</h1>
+  </div>
+  <div class="layout">
+    <div class="ide">
+      <h2 style="font-size:16px;">Editor</h2>
+      <textarea id="code">
+coeternal light := ∞;
 
 posit varnothing nabla infty ds2(): {
-    octyl time := 1;
-    time := time + 1;
-    print(time);
+    print("Demo run.");
+    octyl time := 2;
+
     intertillage [2∞..10∞] -> i: {
         time := i + time;
         print(time);
     }
-}</textarea>
-            <div id="highlightPreview-example1" class="highlightPreview"></div>
-        </div>
 
-        <div class="tab-content" id="example2">
-            <textarea id="code-example2">coeternal light := ∞;
-
-posit varnothing nabla infty ds2(): {
-    intertillage [0..∞] -> x: { print(x); }
-    delineator "boundary": { octyl time := 1; print(time); print(light); }
-    bifurcator ∞[2∞, 3∞] -> a(b, x): { print(a); print(b); print(x); }
-    octyl field_generator := 100;
-    equiangular field_generator == 100: { print("Simulonic Field Generator is on."); }
-    boundary [0..∞] -> frame: { print(frame); }
-    boundary [0..2∞] -> b_frame: { print(b_frame); }
-    boundary [0..3∞] -> c_frame: { print(c_frame); }
-    recur ds2(10∞);
-}</textarea>
-            <div id="highlightPreview-example2" class="highlightPreview"></div>
-        </div>
-
-        <div class="tab-content" id="example3">
-            <textarea id="code-example3">coeternal light := ∞;
-
-posit varnothing nabla infty ds2(): {
-    sol day intensity 0.9 {
-        print("Martian Daytime.");
-        intertillage [∞..∞+10] -> d: {
-            print(d);
-        }
-    }
-    sol night duration 12.3 {
-        print("Martian Nighttime.");
-        delineator "cycle begin": {
-            print("Cycle is beginning. Delineating...");
-        }
-    }
-    sol day duration 12.3 {
-        print("Martian Daytime.");
-        intertillage [∞..∞+20] -> d: {
-            print(d);
-        } 
-    }
-    sol night intensity 0.6 {
-        print("Martian Nighttime.");
-        delineator "cycle end": {
-            print("Cycle is ending. Delineating...");
-        }
-    }
-}</textarea>
-            <div id="highlightPreview-example3" class="highlightPreview"></div>
-        </div>
-
-        <div class="tab-content" id="example4">
-            <textarea id="code-example4">coeternal light := ∞;
-
-posit varnothing nabla infty ds2(): {
-    boundary [0..light] -> y: {
-        print(y.top);
-        boundary y.top -> yt: {
-            print(yt.top);
-            boundary yt.top -> yt2: {
-                print(yt2.top);
-            }
-        }
-        print(y.right);
-        boundary y.right -> yr: {
-            print(yr.top);
-            boundary yr.top -> yr2: {
-                print(yr2.top);
-            }
-        }
-        print(y.bottom);
-        boundary y.bottom -> yb: {
-            print(yb.bottom);
-            boundary yb.bottom -> yb2: {
-                print(yb2.bottom);
-            }
-        }
-        print(y.left);
-        boundary y.left -> yl: {
-            print(yl.top);
-            boundary yl.top -> yl2: {
-                print(yl2.top);
-            }
-        }
-    }
-    print(" ");
-    recur ds2(10∞);
-}</textarea>
-            <div id="highlightPreview-example4" class="highlightPreview"></div>
-        </div>
-
-        <div class="tab-content" id="example5">
-            <textarea id="code-example5">coeternal light := ∞;
-
-posit varnothing nabla infty ds2(): {
-    bifurcator 10[20, 30] -> a(b, c): {
-        bifurcator b[30, 40] -> x(y, z): {
-                 
-        }
-        bifurcator c[40, 50] -> d(e, f): {
-             
-        }
-    }
-    recur ds2(100∞);
-}</textarea>
-            <div id="highlightPreview-example5" class="highlightPreview"></div>
-        </div>
-
-        <div class="tab-content" id="example6">
-            <textarea id="code-example6">coeternal light := ∞;
-
-posit varnothing nabla infty ds2(): {
-
-    sol day intensity 1.0 {
-        print("☀️ Solar Crest Initiated.");
-        intertillage [∞..∞+5] -> crest: {
-            print(crest);
-        }
-        delineator "crest-field": {
-            octyl pulse := 3;
-            print(pulse);
-            print(light);
-        }
+    boundary [0..light] -> b: {
+        print(b.top);
     }
 
-    bifurcator ∞[2∞, 4∞] -> a(b, c): {
-        print(a); print(b); print(c);
-        
-        bifurcator b[4∞, 6∞] -> left(x, y): {
-            boundary [x..y] -> lnode: {
-                print("↙ Left Node at"); print(lnode.top);
-            }
-        }
+    sol day intensity 0.9 { print("Day."); }
+    sol night duration 12.3 { print("Night."); }
 
-        bifurcator c[6∞, 8∞] -> right(m, n): {
-            boundary [m..n] -> rnode: {
-                print("↘ Right Node at"); print(rnode.top);
-            }
-        }
+    delineator "sector-alpha": { print("delineating.."); }
+
+    contradiction ("A","¬A") -> [fp, T]: {
+        print(fp);
+        print(T);
     }
-
-    sol night duration 13.3 {
-        print("🌑 Lunar Sink Phase.");
-        delineator "collapse-threshold": {
-            intertillage [∞..∞+3] -> voidstep: {
-                print("Collapsing at"); print(voidstep);
-            }
-        }
-    }
-
-    boundary [0..light] -> f: {
-        print("🌐 Boundary Field Start:"); print(f.top);
-        boundary f.right -> f1: { print(f1.right); }
-        boundary f.bottom -> f2: { print(f2.bottom); }
-        boundary f.left -> f3: { print(f3.left); }
-    }
-
-    equiangular light == ∞: {
-        print("🧭 Equilibrium Achieved: Simulonic Constants Hold.");
-    }
-
-    print("🔁 Initiating recursive symbolic pass...");
-    recur ds2(100∞);
 }
-</textarea>
-            <div id="highlightPreview-example6" class="highlightPreview"></div>
-        </div>
+      </textarea>
 
-        <div class="buttons">
-            <button onclick="compileCode()">Compile Only</button>
-            <button onclick="runCode()">Run</button>
-            <button onclick="stopCode()">Stop</button>
-        </div>
-        <pre id="output"></pre>
+      <div class="btns">
+        <button id="compileBtn">Compile Only</button>
+        <button id="runBtn">Run</button>
+        <button id="stopBtn">Stop</button>
+        <button id="visualizeBtn" class="secondary">Visualize from Code 🎬</button>
+      </div>
+
+      <div id="highlightPreview" class="highlightPreview"></div>
+      <pre id="output"></pre>
     </div>
 
-    <script>
-        let outputInterval = null;
+    <div class="viz">
+      <h2 style="font-size:16px;">10-Quadrant Visualization</h2>
+      <div class="controls">
+        <label>Amplitude <input type="range" id="ampSlider" min="0" max="20" value="8"></label>
+        <label>Frequency <input type="range" id="freqSlider" min="1" max="10" value="3"></label>
+        <label>Rings <input type="range" id="ringSlider" min="3" max="20" value="12"></label>
+        <label>Warp Distance <input type="range" id="distanceSlider" min="0" max="100" value="50"></label>
+        <button id="modeToggle">Toggle All Warp 🌌</button>
+        <button id="chronoReindex">Reindex Through Chrono-Lattice ⏳</button>
+      </div>
+      <div class="canvas-wrapper" id="canvasGrid"></div>
+      <div id="simulang-footer">
+        Handcrafted by Hrishi Mukherjee for Infinite Set Problems in AGI and ASI. © Hrishi Mukherjee Horizons 2025.
+      </div>
+    </div>
+  </div>
 
-        // Tab switching logic
-        document.querySelectorAll('.tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-                tab.classList.add('active');
-                document.getElementById(tab.dataset.tab).classList.add('active');
-                highlightAllPreviews();
-            });
+  <script>
+    /**************
+     * IDE: Tokenize + Highlight
+     **************/
+    function tokenize(code) {
+      const parts = code.split(/(\s+|[()\[\]{}:;.=,+*/-])/).filter(Boolean);
+      return parts.map(tok => {
+        if (/^\s+$/.test(tok)) return ['WS', tok];
+        if (/^".*"$/.test(tok)) return ['STRING', tok];
+        if (/^\d/.test(tok)) return ['NUMBER', tok];
+        if (/(coeternal|posit|varnothing|nabla|infty|octyl|intertillage|print|equiangular|boundary|recur|bifurcator|delineator|contradiction)\b/.test(tok)) return ['KEYWORD', tok];
+        if (tok === 'sol') return ['SOL', tok];
+        if (/(day|night)\b/.test(tok)) return ['PHASE', tok];
+        if (/(intensity|duration)\b/.test(tok)) return ['ATTRIBUTE', tok];
+        if (/^[()\[\]{}:;.=,+*/-]$/.test(tok)) return ['SYMBOL', tok];
+        return ['IDENTIFIER', tok];
+      });
+    }
+
+    function renderHighlight(code) {
+      const tokens = tokenize(code);
+      return tokens.map(([type, value]) => {
+        if (type === 'WS') return value.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        let cls = 'token';
+        if (type === 'KEYWORD') cls += ' keyword';
+        else if (type === 'IDENTIFIER') cls += ' identifier';
+        else if (type === 'NUMBER') cls += ' number';
+        else if (type === 'STRING') cls += ' string';
+        else if (type === 'SYMBOL') cls += ' symbol';
+        else if (type === 'SOL') cls += ' sol';
+        else if (type === 'PHASE') cls += ' phase';
+        else if (type === 'ATTRIBUTE') cls += ' attribute';
+        if (/coeternal|infty/.test(value)) cls += ' canvas-linked';
+        if (/octyl|time/.test(value)) cls += ' canvas-linked';
+        if (/intertillage/.test(value)) cls += ' canvas-linked';
+        if (/sol/.test(value)) cls += ' canvas-linked';
+        if (/boundary/.test(value)) cls += ' canvas-linked';
+        if (/delineator/.test(value)) cls += ' canvas-linked';
+        if (/contradiction/.test(value)) cls += ' canvas-linked';
+        const safe = value.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        return `<span class="${cls}">${safe}</span>`;
+      }).join('');
+    }
+
+    const codeEl = document.getElementById('code');
+    const previewEl = document.getElementById('highlightPreview');
+    function updatePreview() { previewEl.innerHTML = renderHighlight(codeEl.value); }
+    codeEl.addEventListener('input', updatePreview);
+    updatePreview();
+
+    /**************
+     * Backend hooks (optional)
+     **************/
+    let outputInterval = null;
+    let __lastOutputLen = 0;
+
+    async function compileCode() {
+      const out = document.getElementById('output');
+      out.textContent = 'Compiling...\n';
+      try {
+        const res = await fetch('/compile', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ code: codeEl.value })
+        });
+        const result = await res.json();
+        out.textContent = result.output || ('Error: ' + result.error + '\n');
+      } catch {
+        out.textContent = 'Error: Network issue or server error\n';
+      }
+    }
+
+    async function runCode() {
+      const out = document.getElementById('output');
+      out.textContent = 'Executing...\n';
+      __lastOutputLen = 0;
+      try {
+        const res = await fetch('/run', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ code: codeEl.value })
+        });
+        const result = await res.json();
+        out.textContent = result.output || out.textContent;
+        startOutputLoop();
+      } catch {
+        out.textContent = 'Error: Failed to start execution\n';
+      }
+    }
+
+    async function stopCode() {
+      const out = document.getElementById('output');
+      try {
+        const res = await fetch('/stop', { method: 'POST' });
+        const result = await res.json();
+        out.textContent += result.status || '\nStopped.\n';
+        if (outputInterval) { clearInterval(outputInterval); outputInterval = null; }
+      } catch {
+        out.textContent += '\nError: Failed to stop execution';
+      }
+    }
+
+    function startOutputLoop() {
+      if (outputInterval) clearInterval(outputInterval);
+      outputInterval = setInterval(async () => {
+        try {
+          const res = await fetch('/fetch_output');
+          const data = await res.json();
+          const outEl = document.getElementById('output');
+          const newChunk = data.output.slice(__lastOutputLen);
+          outEl.textContent = data.output;
+          if (newChunk && newChunk.trim().length) {
+            const hits = inferConstructsFromOutput(newChunk);
+            hits.forEach(h => flashQuadrantsForConstruct(h, 1.0));
+          }
+          __lastOutputLen = data.output.length;
+          if (data.done) {
+            clearInterval(outputInterval);
+            outputInterval = null;
+            outEl.textContent += '\n✅ Execution complete.';
+          }
+        } catch {
+          const outEl = document.getElementById('output');
+          outEl.textContent += '\nError: Output fetch failed';
+          clearInterval(outputInterval);
+          outputInterval = null;
+        }
+      }, 500);
+    }
+
+    document.getElementById('compileBtn').addEventListener('click', compileCode);
+    document.getElementById('runBtn').addEventListener('click', runCode);
+    document.getElementById('stopBtn').addEventListener('click', stopCode);
+
+    /**************
+     * Visualization setup
+     **************/
+    const canvasGrid = document.getElementById('canvasGrid');
+    const ampSlider = document.getElementById('ampSlider');
+    const freqSlider = document.getElementById('freqSlider');
+    const ringSlider = document.getElementById('ringSlider');
+    const distanceSlider = document.getElementById('distanceSlider');
+    const toggleBtn = document.getElementById('modeToggle');
+    const chronoBtn = document.getElementById('chronoReindex');
+    const visualizeBtn = document.getElementById('visualizeBtn');
+
+    let chronoTransition = false;
+    let chronoProgress = 0;
+    let chronoSteps = 100;
+    let chronoTarget = 0;
+    let frame = 0;
+    let frameSpeed = 1;
+    let brightnessFactor = 1;
+
+    const renderers = [];
+
+    function attachCanvasToggle(renderer) {
+      const el = renderer.canvas;
+      const toggle = (e) => {
+        e.preventDefault();
+        renderer.warp = !renderer.warp;   // per-core toggle
+        renderer.flash = 1.0;             // visual feedback
+      };
+      el.addEventListener('click', toggle);
+      el.addEventListener('touchstart', toggle, { passive: false });
+    }
+
+    function createRenderer(label, isChrono) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'canvas-block';
+      const title = document.createElement('h4');
+      title.textContent = label;
+      const canvas = document.createElement('canvas');
+      canvas.width = 250; canvas.height = 250;
+      const ctx = canvas.getContext('2d');
+      wrapper.appendChild(title);
+      wrapper.appendChild(canvas);
+      canvasGrid.appendChild(wrapper);
+      const r = { ctx, canvas, rings: [], isChrono, effects: {}, flash: 0, warp: false };
+      attachCanvasToggle(r);
+      return r;
+    }
+
+    for (let i = 1; i <= 5; i++) renderers.push(createRenderer(`Original Core ${i}`, false));
+    for (let i = 1; i <= 5; i++) renderers.push(createRenderer(`Chrono-Reindexed ${i}`, true));
+
+    function generateRings(n) {
+      const maxRadius = 100;
+      const appleAlienPalette = [
+        '#00fff0', // neon aqua
+        '#ff00ff', // magenta
+        '#39ff14', // neon green
+        '#ff005d', // hot pink
+        '#00ff95', // mint neon
+        '#8c00ff', // violet
+        '#00b3ff', // bright cyan
+        '#ff7b00', // alien orange
+        '#aaff00', // lime
+        '#ff00aa'  // pink magenta
+      ];
+      return Array.from({ length: n }, (_, i) => {
+        const baseColor = appleAlienPalette[i % appleAlienPalette.length];
+        return {
+          baseRadius: ((i + 1) / n) * maxRadius,
+          currentRadius: ((i + 1) / n) * maxRadius,
+          angle: 0,
+          speed: (i % 2 === 0 ? 1 : -1) * (0.01 + i * 0.002),
+          baseSpeed: (i % 2 === 0 ? 1 : -1) * (0.01 + i * 0.002),
+          color: baseColor,
+          brightness: 65 + (i % 2) * 15 // slightly varied brightness
+        };
+      });
+    }
+    function drawCore(ctx, x, y) { ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.fillStyle = 'white'; ctx.fill(); }
+
+    // --- Per-construct overlays + effects ---
+    function drawRadials(ctx, cx, cy, count = 12, thickness = 2, radius = 110) {
+      ctx.save(); ctx.translate(cx, cy); ctx.lineWidth = thickness; ctx.strokeStyle = 'rgba(0,255,238,0.35)';
+      for (let i = 0; i < count; i++) { const a = (i / count) * Math.PI * 2; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(radius*Math.cos(a), radius*Math.sin(a)); ctx.stroke(); }
+      ctx.restore();
+    }
+    function drawSectorSweep(ctx, cx, cy, t, radius = 115) {
+      const sweep = (Math.sin(t / 50) * 0.5 + 0.5) * (Math.PI * 1.25);
+      const start = (t / 60) % (Math.PI * 2);
+      ctx.save(); ctx.translate(cx, cy); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = 'rgba(0,255,238,0.12)';
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, radius, start, start + sweep); ctx.closePath(); ctx.fill(); ctx.restore();
+    }
+    function drawFlashFrame(ctx, w, h, intensity) {
+      if (intensity <= 0) return;
+      ctx.save(); ctx.strokeStyle = `rgba(0,255,238,${0.25 * intensity})`; ctx.lineWidth = 8 * intensity;
+      ctx.strokeRect(4, 4, w - 8, h - 8); ctx.restore();
+    }
+
+    function drawRing(ctx, ring, frame, amp, freq, isWarped, isChronoCopy, chronoT, opts = {}) {
+      const { bifurcate=false, jitter=0, solBreath=0 } = opts;
+      ctx.save(); ctx.translate(125, 125); ctx.rotate(ring.angle);
+      const breath = solBreath ? (1 + 0.25 * Math.sin(frame / 20)) : 1;
+      const baseHue = parseInt(ring.color.match(/\d+/)[0]);
+      ctx.strokeStyle = `hsl(${baseHue}, 100%, ${Math.min(90, ring.brightness * breath)}%)`;
+      ctx.lineWidth = 1.5 + 1 * Math.sin(frame / 30 + ring.currentRadius / 50);
+
+      function tracePath(phaseOffset = 0, radialOffset = 0) {
+        ctx.beginPath();
+        const segments = 150;
+        for (let i = 0; i <= segments; i++) {
+          const theta = (i / segments) * 2 * Math.PI;
+          let radius = ring.currentRadius + radialOffset;
+          let warpOriginal = amp * Math.sin(frame / 20 + theta * freq + radius / 20 + phaseOffset);
+          let warpFinal = warpOriginal * 1.5;
+          let appliedWarp = 0;
+          if (isWarped) appliedWarp = warpOriginal;
+          else if (isChronoCopy) appliedWarp = warpOriginal * (1 - chronoT) + warpFinal * chronoT;
+          const j = jitter ? (Math.sin(theta * 37 + frame / 7) * jitter) : 0;
+          radius += appliedWarp + j;
+          const x = radius * Math.cos(theta), y = radius * Math.sin(theta);
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.closePath(); ctx.stroke();
+      }
+
+      if (bifurcate) { tracePath(+0.4, +2.0); tracePath(-0.4, -2.0); }
+      else { tracePath(); }
+      ctx.restore();
+    }
+
+    // Construct detection + mapping
+    function parseConstructsFromCode(code) {
+      const c = new Set();
+      if (/contradiction\b/i.test(code)) c.add('contradiction');
+      if (/\bboundary\b/i.test(code)) c.add('boundary');
+      if (/\bintertillage\b/i.test(code)) c.add('intertillage');
+      if (/\bsol\b/i.test(code)) c.add('sol');
+      if (/\bdelineator\b/i.test(code)) c.add('delineator');
+      return c;
+    }
+    const CONSTRUCT_TO_QUADS = {
+      contradiction: [3, 8],
+      boundary:      [2, 7],
+      intertillage:  [0, 5],
+      sol:           [1, 6],
+      delineator:    [4, 9],
+    };
+    function applyEffectsToRenderers(constructs) {
+      renderers.forEach(r => { r.effects = {}; });
+      constructs.forEach(k => {
+        (CONSTRUCT_TO_QUADS[k] || []).forEach(idx => {
+          if (renderers[idx]) renderers[idx].effects[k] = true;
+        });
+      });
+    }
+    function flashQuadrantsForConstruct(construct, strength = 1.0) {
+      (CONSTRUCT_TO_QUADS[construct] || []).forEach(idx => {
+        if (renderers[idx]) renderers[idx].flash = Math.max(renderers[idx].flash || 0, strength);
+      });
+    }
+    function inferConstructsFromOutput(text) {
+      const hits = [];
+      if (/contradiction/i.test(text)) hits.push('contradiction');
+      if (/\bboundary\b/i.test(text)) hits.push('boundary');
+      if (/\bintertillage\b/i.test(text)) hits.push('intertillage');
+      if (/\bsol\b/i.test(text)) hits.push('sol');
+      if (/\bdelineator\b/i.test(text)) hits.push('delineator');
+      return hits;
+    }
+
+    // Animate loop
+    function animate() {
+      const amp = parseFloat(ampSlider.value);
+      const freq = parseFloat(freqSlider.value);
+      const count = parseInt(ringSlider.value);
+
+      let chronoT = 0;
+      if (chronoTransition && chronoProgress <= chronoSteps) {
+        chronoT = chronoProgress / chronoSteps;
+        const d = chronoTarget / 100;
+        renderers.forEach(r => {
+          r.rings.forEach(ring => {
+            ring.brightness = 50 + 30 * chronoT * d;
+            ring.speed = ring.baseSpeed * (1 + chronoT * d);
+            ring.currentRadius = ring.baseRadius * (1 + 0.1 * chronoT * d);
+          });
+        });
+        chronoProgress++;
+        if (chronoProgress >= chronoSteps) chronoTransition = false;
+      } else chronoT = 1;
+
+      renderers.forEach(renderer => {
+        const ctx = renderer.ctx;
+        const W = renderer.canvas.width, H = renderer.canvas.height;
+        ctx.clearRect(0, 0, W, H);
+
+        if (renderer.rings.length !== count) {
+          renderer.rings = generateRings(count);
+        }
+
+        const hasContradiction = !!renderer.effects.contradiction;
+        const hasBoundary      = !!renderer.effects.boundary;
+        const hasIntertillage  = !!renderer.effects.intertillage;
+        const hasSol           = !!renderer.effects.sol;
+        const hasDelineator    = !!renderer.effects.delineator;
+
+        renderer.rings.forEach(ring => {
+          ring.angle += ring.speed;
+          drawRing(
+            ctx, ring, frame, amp, freq,
+            renderer.warp,                   // ← per-core warp toggle
+            renderer.isChrono, chronoT,
+            {
+              bifurcate: hasContradiction,
+              jitter: hasIntertillage ? 0.9 : 0,
+              solBreath: hasSol
+            }
+          );
         });
 
-        function getActiveCode() {
-            const activeTab = document.querySelector('.tab-content.active textarea');
-            return activeTab ? activeTab.value : '';
+        if (hasBoundary)   drawRadials(ctx, 125, 125, 12, 2, 110);
+        if (hasDelineator) drawSectorSweep(ctx, 125, 125, frame, 115);
+
+        drawCore(ctx, 125, 125);
+
+        if (renderer.flash && renderer.flash > 0) {
+          drawFlashFrame(ctx, W, H, renderer.flash);
+          renderer.flash = Math.max(0, renderer.flash - 0.03);
         }
+      });
 
-        async function compileCode() {
-            const code = getActiveCode();
-            const output = document.getElementById("output");
-            output.textContent = "Compiling...\n";
-            try {
-                const response = await fetch('/compile', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ code })
-                });
-                const result = await response.json();
-                output.textContent = result.output || ('Error: ' + result.error + '\n');
-            } catch (e) {
-                output.textContent = 'Error: Network issue or server error\n';
-            }
-        }
+      frame += frameSpeed;
+      requestAnimationFrame(animate);
+    }
 
-        async function runCode() {
-            const code = getActiveCode();
-            const output = document.getElementById("output");
-            output.textContent = "Executing...\n";
-            try {
-                const response = await fetch('/run', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ code })
-                });
-                const result = await response.json();
-                output.textContent = result.output;
-                startOutputLoop();
-            } catch (e) {
-                output.textContent = 'Error: Failed to start execution\n';
-            }
-        }
+    // Global buttons
+    toggleBtn.addEventListener('click', () => {
+      const anyOff = renderers.some(r => !r.warp);
+      renderers.forEach(r => r.warp = anyOff);
+      toggleBtn.textContent = anyOff ? 'Set All Static 🔁' : 'Toggle All Warp 🌌';
+    });
+    chronoBtn.addEventListener('click', () => {
+      chronoTarget = parseInt(distanceSlider.value);
+      chronoSteps = Math.max(30, chronoTarget);
+      chronoTransition = true;
+      chronoProgress = 0;
+    });
+    visualizeBtn.addEventListener('click', () => {
+      const constructs = parseConstructsFromCode(codeEl.value);
+      applyEffectsToRenderers(constructs);
+      const m = codeEl.value.match(/octyl\s+time\s*:=\s*(\d+)/);
+      if (m) frameSpeed = Math.max(1, Math.min(8, parseInt(m[1], 10)));
+    });
 
-        async function stopCode() {
-            const output = document.getElementById("output");
-            try {
-                const response = await fetch('/stop', { method: 'POST' });
-                const result = await response.json();
-                output.textContent += result.status;
-                if (outputInterval) {
-                    clearInterval(outputInterval);
-                    outputInterval = null;
-                }
-            } catch (e) {
-                output.textContent += '\nError: Failed to stop execution';
-            }
-        }
-
-        function startOutputLoop() {
-            if (outputInterval) clearInterval(outputInterval);
-            outputInterval = setInterval(async () => {
-                try {
-                    const res = await fetch('/fetch_output');
-                    const data = await res.json();
-                    document.getElementById("output").textContent = data.output;
-                    if (data.done) {
-                        clearInterval(outputInterval);
-                        outputInterval = null;
-                        document.getElementById("output").textContent += '\n✅ Execution complete.';
-                    }
-                } catch (e) {
-                    document.getElementById("output").textContent += '\nError: Output fetch failed';
-                    clearInterval(outputInterval);
-                    outputInterval = null;
-                }
-            }, 500);
-        }
-
-        // --- Highlighting logic ---
-        function tokenize(code) {
-            // Dummy tokenizer: Replace this with your real one
-            const words = code.split(/(\s+|[^a-zA-Z0-9_])/).filter(Boolean);
-            return words.map(word => {
-                if (/^\d/.test(word)) return ['NUMBER', word];
-                if (/^".*"$/.test(word)) return ['STRING', word];
-                if (word === 'coeternal' || word === 'posit' || word === 'varnothing' || word === 'nabla' || word === 'infty' || word === 'octyl' || word === 'intertillage' || word === 'print' || word === 'equiangular') return ['KEYWORD', word];
-                if (word === 'sol') return ['SOL', word];
-                if (word === 'day' || word === 'night') return ['PHASE', word];
-                if (word === 'intensity' || word === 'duration') return ['ATTRIBUTE', word];
-                if (/[\(\)\{\}\[\]:=.,+*/-]/.test(word)) return ['SYMBOL', word];
-                return ['IDENTIFIER', word];
-            });
-        }
-
-        function highlightPreview(textareaId, previewId) {
-            const textarea = document.getElementById(textareaId);
-            const preview = document.getElementById(previewId);
-            const tokens = tokenize(textarea.value);
-            preview.innerHTML = tokens.map(([type, value]) => {
-                let className = 'token';
-                if (type === 'KEYWORD') className += ' keyword';
-                else if (type === 'IDENTIFIER') className += ' identifier';
-                else if (type === 'NUMBER') className += ' number';
-                else if (type === 'STRING') className += ' string';
-                else if (type === 'SYMBOL') className += ' symbol';
-                else if (type === 'SOL') className += ' sol';
-                else if (type === 'PHASE') className += ' phase';
-                else if (type === 'ATTRIBUTE') className += ' attribute';
-                return `<span class="${className}">${value}</span>`;
-            }).join('');
-        }
-
-        function highlightAllPreviews() {
-            highlightPreview("code-example1", "highlightPreview-example1");
-            highlightPreview("code-example2", "highlightPreview-example2");
-            highlightPreview("code-example3", "highlightPreview-example3");
-            highlightPreview("code-example4", "highlightPreview-example4");
-            highlightPreview("code-example5", "highlightPreview-example5");
-            highlightPreview("code-example6", "highlightPreview-example6");
-        }
-
-        // Initialize preview highlighting on load
-        window.addEventListener('load', highlightAllPreviews);
-    </script>
-
-    <div id="simulang-footer">
-        Handcrafted by Hrishi Mukherjee for Infinite Set Problems in AGI and ASI. Copyright 2025.
-    </div>
+    animate();
+  </script>
 </body>
 </html>
