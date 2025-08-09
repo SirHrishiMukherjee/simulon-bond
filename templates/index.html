@@ -16,36 +16,64 @@
     }
     body { margin: 0; font-family: monospace; background: var(--bg); color: var(--text); padding: 20px; }
     h1, h2 { text-align: center; margin: 0 0 10px 0; }
+
+    /* Desktop layout */
     .layout { display: grid; grid-template-columns: 420px 1fr; gap: 16px; align-items: start; }
-    @media (max-width: 1024px) { .layout { grid-template-columns: 1fr; } }
-    .ide { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 12px; position: sticky; top: 12px; }
+
+    /* Mobile-first tweaks */
+    @media (max-width: 1024px) {
+      body { padding: 12px; }
+      .layout { grid-template-columns: 1fr; }
+      .ide { position: static; }
+      .controls { justify-content: flex-start; }
+    }
+
+    .ide {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px;
+      position: sticky;
+      top: 12px;
+    }
     textarea {
       width: 100%; height: 260px; background: var(--panel-2); color: var(--text);
       border: 1px solid var(--border); border-radius: 4px; padding: 10px; resize: vertical;
       font-family: monospace; font-size: 13px;
     }
-    .highlightPreview { background: #1b1b1b; border: 1px solid var(--border); border-radius: 4px; padding: 10px; white-space: pre-wrap; min-height: 120px; margin-top: 10px; }
+    .highlightPreview {
+      background: #1b1b1b; border: 1px solid var(--border); border-radius: 4px; padding: 10px;
+      white-space: pre-wrap; min-height: 120px; margin-top: 10px;
+    }
     .token { display: inline; }
     .token.keyword { color: #c586c0; } .token.identifier { color: #9cdcfe; }
     .token.number { color: #b5cea8; } .token.string { color: #ce9178; }
     .token.symbol { color: #d4d4d4; } .token.sol { color: #ffb300; font-weight: bold; }
     .token.phase { color: #ffa000; } .token.attribute { color: #d7ba7d; }
     .canvas-linked { background: #003344; border-radius: 3px; padding: 1px 3px; font-weight: bold; }
+
     .btns { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
     button { background: var(--accent-2); color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: 700; }
     button.secondary { background: var(--accent); color: #000; }
     pre#output { background: #161616; border: 1px solid var(--border); border-radius: 4px; padding: 10px; min-height: 120px; white-space: pre-wrap; overflow: auto; font-size: 12px; }
+    @media (max-width: 600px) { pre#output { font-size: 11px; } }
 
     .viz { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 12px; }
-    .controls { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; justify-content: center; margin: 8px 0 12px; }
-    .controls label { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
-    .canvas-wrapper { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+    .controls {
+      display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: center; margin: 8px 0 12px;
+      overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: thin;
+    }
+    .controls label { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; white-space: nowrap; }
+
+    .canvas-wrapper { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
     .canvas-block {
       display: flex; flex-direction: column; align-items: center; background: #111; padding: 8px;
       border-radius: 6px; border: 1px solid #0a3a36; user-select: none;
     }
-    .canvas-block h4 { margin: 4px 0 6px 0; color: var(--accent); font-weight: 600; font-size: 13px; }
-    canvas { background: black; border: 1px solid var(--accent); width: 250px; height: 250px; touch-action: manipulation; }
+    .canvas-block h4 { margin: 2px 0 4px; color: var(--accent); font-weight: 600; font-size: 12px; }
+
+    /* Canvas scales with container; JS sets actual pixel size for sharpness */
+    canvas { background: black; border: 1px solid var(--accent); width: 100%; height: auto; max-width: 320px; touch-action: manipulation; }
 
     #simulang-footer { margin-top: 16px; color: #bbbbbb; font-style: italic; font-size: 12px; text-align: center; opacity: 0.85; }
 
@@ -83,19 +111,14 @@ posit varnothing nabla infty ds2(): {
         print(time);
     }
 
-    boundary [0..light] -> b: {
-        print(b.top);
-    }
+    boundary [0..light] -> b: { print(b.top); }
 
     sol day intensity 0.9 { print("Day."); }
     sol night duration 12.3 { print("Night."); }
 
     delineator "sector-alpha": { print("delineating.."); }
 
-    contradiction ("A","¬A") -> [fp, T]: {
-        print(fp);
-        print(T);
-    }
+    contradiction ("A","¬A") -> [fp, T]: { print(fp); print(T); }
 }
       </textarea>
 
@@ -298,12 +321,12 @@ posit varnothing nabla infty ds2(): {
       const title = document.createElement('h4');
       title.textContent = label;
       const canvas = document.createElement('canvas');
-      canvas.width = 250; canvas.height = 250;
+      // CSS controls display size; JS will set pixel size
       const ctx = canvas.getContext('2d');
       wrapper.appendChild(title);
       wrapper.appendChild(canvas);
       canvasGrid.appendChild(wrapper);
-      const r = { ctx, canvas, rings: [], isChrono, effects: {}, flash: 0, warp: false };
+      const r = { ctx, canvas, rings: [], isChrono, effects: {}, flash: 0, warp: false, _scale: 1, _dpr: 1 };
       attachCanvasToggle(r);
       return r;
     }
@@ -311,36 +334,49 @@ posit varnothing nabla infty ds2(): {
     for (let i = 1; i <= 5; i++) renderers.push(createRenderer(`Original Core ${i}`, false));
     for (let i = 1; i <= 5; i++) renderers.push(createRenderer(`Chrono-Reindexed ${i}`, true));
 
+    /**************
+     * Responsive sizing (DPR aware)
+     **************/
+    const BASE_SIZE = 250;
+    function getCssCanvasSize(renderer) {
+      const tile = renderer.canvas.parentElement;
+      const containerW = Math.min(tile.clientWidth || 250, 360);
+      return Math.max(160, Math.min(containerW, 320));
+    }
+    function resizeRendererCanvas(renderer) {
+      const cssSize = getCssCanvasSize(renderer);
+      const dpr = window.devicePixelRatio || 1;
+      renderer.canvas.style.width = cssSize + 'px';
+      renderer.canvas.style.height = cssSize + 'px';
+      renderer.canvas.width  = Math.round(cssSize * dpr);
+      renderer.canvas.height = Math.round(cssSize * dpr);
+      renderer._scale = (cssSize / BASE_SIZE);
+      renderer._dpr = dpr;
+    }
+    function resizeAllCanvases() { renderers.forEach(resizeRendererCanvas); }
+    let __rAF;
+    function scheduleResize() { if (__rAF) cancelAnimationFrame(__rAF); __rAF = requestAnimationFrame(resizeAllCanvases); }
+    window.addEventListener('resize', scheduleResize);
+    window.addEventListener('orientationchange', scheduleResize);
+    // initial sizing
+    resizeAllCanvases();
+
+    /**************
+     * Drawing utilities
+     **************/
     function generateRings(n) {
       const maxRadius = 100;
-      const appleAlienPalette = [
-        '#00fff0', // neon aqua
-        '#ff00ff', // magenta
-        '#39ff14', // neon green
-        '#ff005d', // hot pink
-        '#00ff95', // mint neon
-        '#8c00ff', // violet
-        '#00b3ff', // bright cyan
-        '#ff7b00', // alien orange
-        '#aaff00', // lime
-        '#ff00aa'  // pink magenta
-      ];
-      return Array.from({ length: n }, (_, i) => {
-        const baseColor = appleAlienPalette[i % appleAlienPalette.length];
-        return {
-          baseRadius: ((i + 1) / n) * maxRadius,
-          currentRadius: ((i + 1) / n) * maxRadius,
-          angle: 0,
-          speed: (i % 2 === 0 ? 1 : -1) * (0.01 + i * 0.002),
-          baseSpeed: (i % 2 === 0 ? 1 : -1) * (0.01 + i * 0.002),
-          color: baseColor,
-          brightness: 65 + (i % 2) * 15 // slightly varied brightness
-        };
-      });
+      return Array.from({ length: n }, (_, i) => ({
+        baseRadius: ((i + 1) / n) * maxRadius,
+        currentRadius: ((i + 1) / n) * maxRadius,
+        angle: 0,
+        speed: (i % 2 === 0 ? 1 : -1) * (0.01 + i * 0.002),
+        baseSpeed: (i % 2 === 0 ? 1 : -1) * (0.01 + i * 0.002),
+        color: `hsl(${(i * 30) % 360}, 100%, 50%)`,
+        brightness: 50
+      }));
     }
     function drawCore(ctx, x, y) { ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.fillStyle = 'white'; ctx.fill(); }
-
-    // --- Per-construct overlays + effects ---
     function drawRadials(ctx, cx, cy, count = 12, thickness = 2, radius = 110) {
       ctx.save(); ctx.translate(cx, cy); ctx.lineWidth = thickness; ctx.strokeStyle = 'rgba(0,255,238,0.35)';
       for (let i = 0; i < count; i++) { const a = (i / count) * Math.PI * 2; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(radius*Math.cos(a), radius*Math.sin(a)); ctx.stroke(); }
@@ -358,17 +394,25 @@ posit varnothing nabla infty ds2(): {
       ctx.strokeRect(4, 4, w - 8, h - 8); ctx.restore();
     }
 
+    // segments adaptive by canvas size
+    function currentSegmentCount(renderer) {
+      const css = (renderer.canvas.clientWidth || BASE_SIZE);
+      return css < 200 ? 110 : css < 260 ? 140 : 170;
+    }
+
     function drawRing(ctx, ring, frame, amp, freq, isWarped, isChronoCopy, chronoT, opts = {}) {
-      const { bifurcate=false, jitter=0, solBreath=0 } = opts;
-      ctx.save(); ctx.translate(125, 125); ctx.rotate(ring.angle);
+      const { bifurcate=false, jitter=0, solBreath=0, segments=150 } = opts;
+      ctx.save();
+      // coordinate system: scale to BASE_SIZE using transform set in animate()
+      ctx.translate(125, 125);
+      ctx.rotate(ring.angle);
       const breath = solBreath ? (1 + 0.25 * Math.sin(frame / 20)) : 1;
-      const baseHue = parseInt(ring.color.match(/\d+/)[0]);
+      const baseHue = parseInt(ring.color.match(/\d+/)[0]) || 180;
       ctx.strokeStyle = `hsl(${baseHue}, 100%, ${Math.min(90, ring.brightness * breath)}%)`;
       ctx.lineWidth = 1.5 + 1 * Math.sin(frame / 30 + ring.currentRadius / 50);
 
       function tracePath(phaseOffset = 0, radialOffset = 0) {
         ctx.beginPath();
-        const segments = 150;
         for (let i = 0; i <= segments; i++) {
           const theta = (i / segments) * 2 * Math.PI;
           let radius = ring.currentRadius + radialOffset;
@@ -384,7 +428,6 @@ posit varnothing nabla infty ds2(): {
         }
         ctx.closePath(); ctx.stroke();
       }
-
       if (bifurcate) { tracePath(+0.4, +2.0); tracePath(-0.4, -2.0); }
       else { tracePath(); }
       ctx.restore();
@@ -430,7 +473,7 @@ posit varnothing nabla infty ds2(): {
       return hits;
     }
 
-    // Animate loop
+    // Animate loop with DPR/scale transform
     function animate() {
       const amp = parseFloat(ampSlider.value);
       const freq = parseFloat(freqSlider.value);
@@ -453,8 +496,14 @@ posit varnothing nabla infty ds2(): {
 
       renderers.forEach(renderer => {
         const ctx = renderer.ctx;
-        const W = renderer.canvas.width, H = renderer.canvas.height;
-        ctx.clearRect(0, 0, W, H);
+
+        // reset transform, clear in device pixels
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, renderer.canvas.width, renderer.canvas.height);
+
+        // set DPR * responsive scale so our 250x250 world fits nicely
+        const s = (renderer._scale || 1) * (renderer._dpr || (window.devicePixelRatio || 1));
+        ctx.setTransform(s, 0, 0, s, 0, 0);
 
         if (renderer.rings.length !== count) {
           renderer.rings = generateRings(count);
@@ -466,16 +515,19 @@ posit varnothing nabla infty ds2(): {
         const hasSol           = !!renderer.effects.sol;
         const hasDelineator    = !!renderer.effects.delineator;
 
+        const segs = currentSegmentCount(renderer);
+
         renderer.rings.forEach(ring => {
           ring.angle += ring.speed;
           drawRing(
             ctx, ring, frame, amp, freq,
-            renderer.warp,                   // ← per-core warp toggle
+            renderer.warp,                   // per-core warp toggle
             renderer.isChrono, chronoT,
             {
               bifurcate: hasContradiction,
               jitter: hasIntertillage ? 0.9 : 0,
-              solBreath: hasSol
+              solBreath: hasSol,
+              segments: segs
             }
           );
         });
@@ -486,7 +538,8 @@ posit varnothing nabla infty ds2(): {
         drawCore(ctx, 125, 125);
 
         if (renderer.flash && renderer.flash > 0) {
-          drawFlashFrame(ctx, W, H, renderer.flash);
+          // Flash frame drawn in the scaled space: convert W,H from base world
+          drawFlashFrame(ctx, BASE_SIZE, BASE_SIZE, renderer.flash);
           renderer.flash = Math.max(0, renderer.flash - 0.03);
         }
       });
