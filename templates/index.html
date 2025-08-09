@@ -366,15 +366,30 @@ posit varnothing nabla infty ds2(): {
      **************/
     function generateRings(n) {
       const maxRadius = 100;
-      return Array.from({ length: n }, (_, i) => ({
-        baseRadius: ((i + 1) / n) * maxRadius,
-        currentRadius: ((i + 1) / n) * maxRadius,
-        angle: 0,
-        speed: (i % 2 === 0 ? 1 : -1) * (0.01 + i * 0.002),
-        baseSpeed: (i % 2 === 0 ? 1 : -1) * (0.01 + i * 0.002),
-        color: `hsl(${(i * 30) % 360}, 100%, 50%)`,
-        brightness: 50
-      }));
+      const appleAlienPalette = [
+        '#00fff0', // neon aqua
+        '#ff00ff', // magenta
+        '#39ff14', // neon green
+        '#ff005d', // hot pink
+        '#00ff95', // mint neon
+        '#8c00ff', // violet
+        '#00b3ff', // bright cyan
+        '#ff7b00', // alien orange
+        '#aaff00', // lime
+        '#ff00aa'  // pink magenta
+      ];
+      return Array.from({ length: n }, (_, i) => {
+        const baseColor = appleAlienPalette[i % appleAlienPalette.length];
+        return {
+          baseRadius: ((i + 1) / n) * maxRadius,
+          currentRadius: ((i + 1) / n) * maxRadius,
+          angle: 0,
+          speed: (i % 2 === 0 ? 1 : -1) * (0.01 + i * 0.002),
+          baseSpeed: (i % 2 === 0 ? 1 : -1) * (0.01 + i * 0.002),
+          color: baseColor,
+          brightness: 65 + (i % 2) * 15 // slightly varied brightness
+        };
+      });
     }
     function drawCore(ctx, x, y) { ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.fillStyle = 'white'; ctx.fill(); }
     function drawRadials(ctx, cx, cy, count = 12, thickness = 2, radius = 110) {
